@@ -1,5 +1,8 @@
 # Palsplan build
 
+- [x] Let returning travelers recover their existing trip identity on a new device.
+- [x] Keep “I’m new here” as an explicit path to create a traveler.
+- [x] Verify saved availability reappears without creating a duplicate member.
 - [x] Add a branded route-mark favicon.
 - [x] Add collaborative trip notes with optional lodging/activity links.
 - [x] Sync notes in local demo mode and Supabase realtime mode.
@@ -28,3 +31,7 @@ tables, and repository deployment secrets are configured.
 The favicon, shared notes, realtime rename, creator-only controls, and
 cascading cancellation were verified against production with two isolated
 browser sessions. The cancellation removed the production smoke-test data.
+
+Returning-traveler recovery was verified on desktop and mobile: an unknown
+device can reclaim an existing member with saved dates without increasing the
+traveler count, while duplicate names in the new-traveler path are rejected.

@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, CalendarDays, Check, Clipboard, Link2, LoaderCircle, MapPin, Pencil, Trash2, Users, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, Clipboard, Link2, LoaderCircle, MapPin, Pencil, ShieldAlert, Trash2, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { Calendar } from './components/Calendar'
 import { Logo } from './components/Logo'
 import { NoteBoard } from './components/NoteBoard'
@@ -30,6 +30,7 @@ export default function App() {
   const [joinName, setJoinName] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [showJoinName, setShowJoinName] = useState(false)
+  const [joinAsNew, setJoinAsNew] = useState(false)
   const [pendingSnapshot, setPendingSnapshot] = useState<TripSnapshot | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -55,6 +56,8 @@ export default function App() {
         await openTrip(found, savedMember)
       } else {
         setPendingSnapshot(found)
+        setJoinAsNew(false)
+        setJoinName('')
         setShowJoinName(true)
       }
     } catch (reason) {
@@ -111,6 +114,13 @@ export default function App() {
   async function handleJoinName(event: FormEvent) {
     event.preventDefault()
     if (!pendingSnapshot || !joinName.trim()) return
+    const duplicate = pendingSnapshot.members.some(
+      (existingMember) => existingMember.name.trim().toLocaleLowerCase() === joinName.trim().toLocaleLowerCase(),
+    )
+    if (duplicate) {
+      setError('That traveler already exists. Go back and choose their name to recover the saved dates.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -124,6 +134,13 @@ export default function App() {
     }
   }
 
+  async function handleReturningMember(nextMember: Member) {
+    if (!pendingSnapshot) return
+    setShowJoinName(false)
+    setJoinName('')
+    await openTrip(pendingSnapshot, nextMember)
+  }
+
   return (
     <main>
       {screen === 'home' || !snapshot || !member ? (
@@ -133,7 +150,7 @@ export default function App() {
           onJoin={handleJoin}
           onCreate={() => setShowCreate(true)}
           loading={loading}
-          error={error}
+          error={showJoinName ? '' : error}
         />
       ) : (
         <TripView snapshot={snapshot} member={member} onSnapshot={setSnapshot} onExit={() => {
@@ -152,18 +169,52 @@ export default function App() {
         />
       )}
       {showJoinName && pendingSnapshot && (
-        <Dialog title={`Join “${pendingSnapshot.trip.name}”`} onClose={() => setShowJoinName(false)}>
-          <form onSubmit={handleJoinName}>
-            <p className="dialog-copy">What should your friends call you?</p>
-            <label className="field">
-              <span>Your name</span>
-              <input autoFocus value={joinName} onChange={(event) => setJoinName(event.target.value)} placeholder="e.g. Dani" maxLength={32} />
-            </label>
-            {error && <p className="form-error">{error}</p>}
-            <button className="button button--primary button--wide" disabled={!joinName.trim() || loading}>
-              {loading ? <LoaderCircle className="spin" size={18} /> : <>Join the trip <ArrowRight size={18} /></>}
-            </button>
-          </form>
+        <Dialog
+          title={joinAsNew ? 'Join as someone new' : 'Have you been here before?'}
+          eyebrow={joinAsNew ? 'A NEW TRAVELER' : 'WELCOME BACK'}
+          onClose={() => setShowJoinName(false)}
+        >
+          {joinAsNew ? (
+            <form onSubmit={handleJoinName}>
+              <p className="dialog-copy">Add yourself to “{pendingSnapshot.trip.name}”.</p>
+              <label className="field">
+                <span>New traveler name</span>
+                <input autoFocus value={joinName} onChange={(event) => setJoinName(event.target.value)} placeholder="e.g. Dani" maxLength={32} />
+              </label>
+              {error && <p className="form-error">{error}</p>}
+              <div className="join-new-actions">
+                <button className="button button--small button--ghost" type="button" onClick={() => {
+                  setJoinAsNew(false)
+                  setError('')
+                }}>Back</button>
+                <button className="button button--primary button--small" disabled={!joinName.trim() || loading}>
+                  {loading ? <LoaderCircle className="spin" size={18} /> : <><UserPlus size={17} /> Add me</>}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="returning-traveler">
+              <p className="dialog-copy">Choose your name to reopen the dates you already saved in “{pendingSnapshot.trip.name}”.</p>
+              <div className="traveler-options">
+                {pendingSnapshot.members.map((existingMember) => {
+                  const dateCount = pendingSnapshot.availability.filter((item) => item.memberId === existingMember.id).length
+                  return (
+                    <button className="traveler-option" type="button" key={existingMember.id} onClick={() => void handleReturningMember(existingMember)}>
+                      <span className="avatar" style={{ background: existingMember.color }}>{existingMember.name.slice(0, 1).toUpperCase()}</span>
+                      <span><strong>{existingMember.name}</strong><small>{dateCount ? `${dateCount} saved date${dateCount === 1 ? '' : 's'}` : 'No dates saved yet'}</small></span>
+                      <UserCheck size={19} />
+                    </button>
+                  )
+                })}
+              </div>
+              <button className="new-traveler-choice" type="button" onClick={() => setJoinAsNew(true)}>
+                <span><UserPlus size={18} /></span>
+                <span><strong>I’m new here</strong><small>Create another traveler in this trip</small></span>
+                <ArrowRight size={17} />
+              </button>
+              <p className="identity-caution"><ShieldAlert size={14} /> Only choose your own name—this lets you edit that traveler’s dates.</p>
+            </div>
+          )}
         </Dialog>
       )}
     </main>

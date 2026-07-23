@@ -6,6 +6,11 @@ Palsplan is a mobile-friendly group availability planner for trips. Create a tri
 
 Travelers can also pin shared notes and safe links for Airbnbs, hotels, restaurants, or loose ideas. The trip creator keeps private permission to rename or permanently cancel the plan.
 
+On a new device, returning travelers can choose their existing name to recover
+their saved dates instead of creating a duplicate. Because Palsplan does not
+yet require accounts, possession of the trip code is the trust boundary for
+this recovery flow.
+
 ## Run locally
 
 ```bash

@@ -311,6 +311,51 @@ footer .logo__mark { width: 30px; height: 30px; }
 }
 .add-destination span { width: 19px; height: 19px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; }
 .form-error { color: #b53f29; font-size: 13px; }
+.traveler-options { max-height: 295px; display: grid; gap: 8px; overflow-y: auto; }
+.traveler-option {
+  width: 100%;
+  min-height: 62px;
+  padding: 10px 13px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: rgba(255,255,255,.78);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, transform .18s ease;
+}
+.traveler-option:hover { border-color: var(--coral); background: white; transform: translateX(3px); }
+.traveler-option > span:nth-child(2) { min-width: 0; flex: 1; }
+.traveler-option strong, .traveler-option small { display: block; }
+.traveler-option strong { font: 600 15px "Fraunces", serif; }
+.traveler-option small { margin-top: 3px; color: var(--ink-soft); font-size: 10px; }
+.traveler-option > svg { color: var(--sage); }
+.new-traveler-choice {
+  width: 100%;
+  min-height: 62px;
+  margin-top: 14px;
+  padding: 10px 13px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  border: 1px dashed rgba(23,51,45,.35);
+  border-radius: 3px;
+  color: var(--ink);
+  background: var(--paper);
+  text-align: left;
+  cursor: pointer;
+}
+.new-traveler-choice > span:first-child { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: var(--coral); background: white; }
+.new-traveler-choice > span:nth-child(2) { min-width: 0; flex: 1; }
+.new-traveler-choice strong, .new-traveler-choice small { display: block; }
+.new-traveler-choice strong { font-size: 13px; }
+.new-traveler-choice small { margin-top: 2px; color: var(--ink-soft); font-size: 10px; }
+.new-traveler-choice:hover { border-color: var(--coral); }
+.identity-caution { margin: 15px 0 0; display: flex; align-items: flex-start; gap: 6px; color: #7e6d58; font-size: 10px; line-height: 1.4; }
+.identity-caution svg { flex: 0 0 auto; margin-top: 1px; }
+.join-new-actions { margin-top: 24px; display: flex; justify-content: flex-end; gap: 9px; }
 
 .trip-page { min-height: 100vh; background: #f8f4eb; }
 .trip-nav { height: 72px; padding-inline: clamp(20px, 4vw, 64px); background: var(--white); }
