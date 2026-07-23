@@ -10,11 +10,12 @@
 - [x] Install dependencies and run static checks.
 - [x] Test the full create, select, save, share, and join experience.
 - [x] Build the production bundle and inspect responsive screenshots.
-- [ ] Publish the repository and deploy GitHub Pages.
+- [x] Publish the repository and deploy GitHub Pages.
 
 ## Review
 
 The production build succeeds, the runtime dependency audit reports zero
 vulnerabilities, and all four Playwright journeys pass across desktop and
 mobile Chromium. The landing page was visually inspected at 2560px and 390px.
-Publication is pending GitHub CLI authentication.
+The public GitHub repository, Pages workflow, Supabase migration, realtime
+tables, and repository deployment secrets are configured.

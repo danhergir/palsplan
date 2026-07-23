@@ -16,7 +16,7 @@ Without environment variables, Palsplan uses browser storage in local demo mode.
 ## Enable shared trips with Supabase
 
 1. Create a Supabase project.
-2. Run [`supabase/schema.sql`](supabase/schema.sql) in its SQL editor.
+2. Run [`supabase/schema.sql`](supabase/schema.sql) in its SQL editor, or use `npx supabase db push` after linking the Supabase CLI.
 3. Copy `.env.example` to `.env.local` and add your project URL and public anon key.
 4. Restart the development server.
 
