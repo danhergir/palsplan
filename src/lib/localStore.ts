@@ -1,10 +1,15 @@
 import type { CreateTripInput, Member, TripSnapshot, TripStore } from '../types'
 
 const STORAGE_KEY = 'palsplan:trips'
+const OWNER_KEY = 'palsplan:trip-owners'
 const COLORS = ['#ef8354', '#e9c46a', '#4f8f7b', '#4e78a0', '#c7788b', '#8067a8']
 
 function readAll(): Record<string, TripSnapshot> {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+  const trips: Record<string, TripSnapshot> = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+  Object.values(trips).forEach((snapshot) => {
+    snapshot.notes ??= []
+  })
+  return trips
 }
 
 function writeAll(trips: Record<string, TripSnapshot>) {
@@ -37,6 +42,7 @@ export const localStore: TripStore = {
     let tripCode = code()
     while (all[tripCode]) tripCode = code()
     const tripId = id()
+    const creatorToken = `${id()}${id()}`
     const trip = {
       id: tripId,
       code: tripCode,
@@ -45,10 +51,12 @@ export const localStore: TripStore = {
       createdAt: new Date().toISOString(),
     }
     const member = newMember(tripId, input.memberName, 0)
-    const snapshot = { trip, members: [member], availability: [] }
+    const snapshot = { trip, members: [member], availability: [], notes: [] }
     all[tripCode] = snapshot
+    const owners = JSON.parse(localStorage.getItem(OWNER_KEY) ?? '{}')
+    localStorage.setItem(OWNER_KEY, JSON.stringify({ ...owners, [tripId]: creatorToken }))
     writeAll(all)
-    return { snapshot, member }
+    return { snapshot, member, creatorToken }
   },
 
   async findTrip(tripCode: string) {
@@ -80,10 +88,58 @@ export const localStore: TripStore = {
     return updated
   },
 
+  async addNote(input) {
+    const all = readAll()
+    const key = Object.keys(all).find((tripCode) => all[tripCode].trip.id === input.tripId)
+    if (!key) throw new Error('This trip no longer exists.')
+    const snapshot = all[key]
+    const note = {
+      id: id(),
+      tripId: input.tripId,
+      memberId: input.memberId,
+      title: input.title.trim(),
+      body: input.body?.trim() || null,
+      url: input.url?.trim() || null,
+      createdAt: new Date().toISOString(),
+    }
+    const updated = { ...snapshot, notes: [note, ...snapshot.notes] }
+    all[key] = updated
+    writeAll(all)
+    return updated
+  },
+
+  async cancelTrip(tripId: string, creatorToken: string) {
+    const owners = JSON.parse(localStorage.getItem(OWNER_KEY) ?? '{}')
+    if (!creatorToken || owners[tripId] !== creatorToken) {
+      throw new Error('Only the trip creator can cancel this plan.')
+    }
+    const all = readAll()
+    const key = Object.keys(all).find((tripCode) => all[tripCode].trip.id === tripId)
+    if (!key) throw new Error('This trip no longer exists.')
+    delete all[key]
+    delete owners[tripId]
+    localStorage.setItem(OWNER_KEY, JSON.stringify(owners))
+    writeAll(all)
+  },
+
+  async renameTrip(tripId: string, name: string, creatorToken: string) {
+    const owners = JSON.parse(localStorage.getItem(OWNER_KEY) ?? '{}')
+    if (!creatorToken || owners[tripId] !== creatorToken) {
+      throw new Error('Only the trip creator can rename this plan.')
+    }
+    const all = readAll()
+    const key = Object.keys(all).find((tripCode) => all[tripCode].trip.id === tripId)
+    if (!key) throw new Error('This trip no longer exists.')
+    const updated = { ...all[key], trip: { ...all[key].trip, name: name.trim() } }
+    all[key] = updated
+    writeAll(all)
+    return updated
+  },
+
   watchTrip(tripCode: string, onChange: (snapshot: TripSnapshot) => void) {
     const update = () => {
       const snapshot = readAll()[tripCode.toUpperCase()]
-      if (snapshot) onChange(snapshot)
+      onChange(snapshot ?? null)
     }
     window.addEventListener('storage', update)
     window.addEventListener('palsplan:updated', update)

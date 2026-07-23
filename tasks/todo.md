@@ -1,5 +1,10 @@
 # Palsplan build
 
+- [x] Add a branded route-mark favicon.
+- [x] Add collaborative trip notes with optional lodging/activity links.
+- [x] Sync notes in local demo mode and Supabase realtime mode.
+- [x] Add database-enforced creator-only trip rename and cancellation.
+- [ ] Verify notes across two traveler sessions and deploy.
 - [x] Define the no-account create/join flow and six-character invite model.
 - [x] Scaffold a Vite + React + TypeScript app for GitHub Pages.
 - [x] Build the editorial travel-inspired visual system and responsive landing page.

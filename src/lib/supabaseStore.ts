@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Availability, CreateTripInput, Member, Trip, TripSnapshot, TripStore } from '../types'
+import type { Availability, CreateTripInput, Member, Trip, TripNote, TripSnapshot, TripStore } from '../types'
 
 const url = import.meta.env.VITE_SUPABASE_URL
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -38,16 +38,31 @@ async function loadSnapshot(code: string): Promise<TripSnapshot | null> {
   const { data: tripRow, error } = await supabase.from('trips').select('*').eq('code', code).maybeSingle()
   if (error) throw error
   if (!tripRow) return null
-  const [{ data: memberRows, error: memberError }, { data: dateRows, error: dateError }] = await Promise.all([
+  const [
+    { data: memberRows, error: memberError },
+    { data: dateRows, error: dateError },
+    { data: noteRows, error: noteError },
+  ] = await Promise.all([
     supabase.from('members').select('*').eq('trip_id', tripRow.id).order('created_at'),
     supabase.from('availability').select('member_id,date').eq('trip_id', tripRow.id),
+    supabase.from('trip_notes').select('*').eq('trip_id', tripRow.id).order('created_at', { ascending: false }),
   ])
   if (memberError) throw memberError
   if (dateError) throw dateError
+  if (noteError) throw noteError
   return {
     trip: mapTrip(tripRow),
     members: (memberRows ?? []).map(mapMember),
     availability: (dateRows ?? []).map((row): Availability => ({ memberId: row.member_id, date: row.date })),
+    notes: (noteRows ?? []).map((row): TripNote => ({
+      id: row.id,
+      tripId: row.trip_id,
+      memberId: row.member_id,
+      title: row.title,
+      body: row.body,
+      url: row.url,
+      createdAt: row.created_at,
+    })),
   }
 }
 
@@ -56,15 +71,23 @@ function createCode() {
   return Array.from({ length: 6 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join('')
 }
 
+async function hashCreatorToken(token: string) {
+  const bytes = new TextEncoder().encode(token)
+  const hash = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
 export const supabaseStore: TripStore = {
   async createTrip(input: CreateTripInput) {
     if (!supabase) throw new Error('Supabase is not configured.')
+    const creatorToken = `${crypto.randomUUID()}${crypto.randomUUID()}`
     const { data: tripRow, error } = await supabase
       .from('trips')
       .insert({
         code: createCode(),
         name: input.name.trim(),
         destinations: (input.destinations ?? []).map((destination) => destination.trim()).filter(Boolean),
+        creator_token_hash: await hashCreatorToken(creatorToken),
       })
       .select()
       .single()
@@ -75,8 +98,8 @@ export const supabaseStore: TripStore = {
       .select()
       .single()
     if (memberError) throw memberError
-    const snapshot = { trip: mapTrip(tripRow), members: [mapMember(memberRow)], availability: [] }
-    return { snapshot, member: snapshot.members[0] }
+    const snapshot = { trip: mapTrip(tripRow), members: [mapMember(memberRow)], availability: [], notes: [] }
+    return { snapshot, member: snapshot.members[0], creatorToken }
   },
 
   findTrip: loadSnapshot,
@@ -115,15 +138,64 @@ export const supabaseStore: TripStore = {
     return snapshot
   },
 
-  watchTrip(code: string, onChange: (snapshot: TripSnapshot) => void) {
+  async addNote(input) {
+    if (!supabase) throw new Error('Supabase is not configured.')
+    const { error } = await supabase.from('trip_notes').insert({
+      trip_id: input.tripId,
+      member_id: input.memberId,
+      title: input.title.trim(),
+      body: input.body?.trim() || null,
+      url: input.url?.trim() || null,
+    })
+    if (error) throw error
+    const { data: trip } = await supabase.from('trips').select('code').eq('id', input.tripId).single()
+    const snapshot = await loadSnapshot(trip!.code)
+    if (!snapshot) throw new Error('This trip no longer exists.')
+    return snapshot
+  },
+
+  async cancelTrip(tripId: string, creatorToken: string) {
+    if (!supabase) throw new Error('Supabase is not configured.')
+    const { data, error } = await supabase.rpc('cancel_trip', {
+      target_trip_id: tripId,
+      creator_token: creatorToken,
+    })
+    if (error) throw error
+    if (!data) throw new Error('Only the trip creator can cancel this plan.')
+  },
+
+  async renameTrip(tripId: string, name: string, creatorToken: string) {
+    if (!supabase) throw new Error('Supabase is not configured.')
+    const { data, error } = await supabase.rpc('rename_trip', {
+      target_trip_id: tripId,
+      new_name: name.trim(),
+      creator_token: creatorToken,
+    })
+    if (error) throw error
+    if (!data) throw new Error('Only the trip creator can rename this plan.')
+    const { data: trip } = await supabase.from('trips').select('code').eq('id', tripId).single()
+    const snapshot = await loadSnapshot(trip!.code)
+    if (!snapshot) throw new Error('This trip no longer exists.')
+    return snapshot
+  },
+
+  watchTrip(code: string, onChange: (snapshot: TripSnapshot | null) => void) {
     if (!supabase) return () => undefined
     const channel = supabase
       .channel(`trip:${code}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, async () => {
+        const snapshot = await loadSnapshot(code)
+        onChange(snapshot)
+      })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'members' }, async () => {
         const snapshot = await loadSnapshot(code)
         if (snapshot) onChange(snapshot)
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'availability' }, async () => {
+        const snapshot = await loadSnapshot(code)
+        if (snapshot) onChange(snapshot)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trip_notes' }, async () => {
         const snapshot = await loadSnapshot(code)
         if (snapshot) onChange(snapshot)
       })

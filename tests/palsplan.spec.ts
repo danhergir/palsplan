@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test'
 test('friends can create a trip, choose dates, and join with its code', async ({ page }) => {
   await page.goto('/')
   await expect(page.getByRole('heading', { name: /Find the dates/i })).toBeVisible()
+  const favicon = await page.locator('link[rel="icon"]').getAttribute('href')
+  expect(favicon).toBe('./favicon.svg')
 
   await page.getByRole('button', { name: /Start a new trip/i }).click()
   await page.getByLabel('Trip name').fill('Caribbean long weekend')
@@ -15,6 +17,21 @@ test('friends can create a trip, choose dates, and join with its code', async ({
   await expect(page.getByRole('heading', { name: 'Caribbean long weekend' })).toBeVisible()
   await expect(page.getByText('Cartagena')).toBeVisible()
   await expect(page.getByText('Minca')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Rename trip' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cancel trip' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Rename trip' }).click()
+  await page.getByLabel('Trip name').fill('Caribbean coast loop')
+  await page.getByRole('button', { name: /Save new name/i }).click()
+  await expect(page.getByRole('heading', { name: 'Caribbean coast loop' })).toBeVisible()
+
+  await page.getByRole('button', { name: /Add a note/i }).click()
+  await page.getByLabel('Title').fill('Rooftop stay in Getsemaní')
+  await page.getByLabel(/Link/).fill('airbnb.com/rooms/123')
+  await page.getByLabel(/Note/).fill('Sleeps six and has free cancellation.')
+  await page.getByRole('button', { name: /Pin it/i }).click()
+  await expect(page.getByRole('heading', { name: 'Rooftop stay in Getsemaní' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /airbnb.com/i })).toHaveAttribute('href', 'https://airbnb.com/rooms/123')
 
   const availableDates = page.locator('button.date-cell:not([disabled])')
   const dateLabels = await availableDates.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')))
@@ -30,18 +47,42 @@ test('friends can create a trip, choose dates, and join with its code', async ({
   expect(tripCode).toMatch(/^[A-Z0-9]{6}$/)
   const tripUrl = page.url()
 
-  await page.evaluate(() => localStorage.removeItem('palsplan:members'))
+  await page.evaluate(() => {
+    localStorage.removeItem('palsplan:members')
+    localStorage.removeItem('palsplan:creators')
+  })
   await page.goto(tripUrl)
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByLabel('Your name').fill('Maya')
   await page.getByRole('button', { name: /Join the trip/i }).click()
   await expect(page.getByText('2 travelers')).toBeVisible()
   await expect(page.getByText('Maya', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Rooftop stay in Getsemaní' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Rename trip' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Cancel trip' })).toHaveCount(0)
 })
 
 test('invalid invite code has a useful error', async ({ page }) => {
   await page.goto('/')
   await page.getByLabel('Trip code').fill('ABC123')
+  await page.getByRole('button', { name: /Join trip/i }).click()
+  await expect(page.getByText(/couldn’t find that trip/i)).toBeVisible()
+})
+
+test('only the creator can cancel a trip', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: /Start a new trip/i }).click()
+  await page.getByLabel('Trip name').fill('Plan to cancel')
+  await page.getByLabel('Your name').fill('Creator')
+  await page.getByRole('button', { name: /Create the trip/i }).click()
+  const tripCode = await page.locator('.code-chip strong').textContent()
+
+  await page.getByRole('button', { name: 'Cancel trip' }).click()
+  await page.getByLabel(/Type “Plan to cancel”/).fill('Plan to cancel')
+  await page.getByRole('button', { name: /Cancel trip permanently/i }).click()
+  await expect(page.getByRole('heading', { name: /Find the dates/i })).toBeVisible()
+
+  await page.getByLabel('Trip code').fill(tripCode!)
   await page.getByRole('button', { name: /Join trip/i }).click()
   await expect(page.getByText(/couldn’t find that trip/i)).toBeVisible()
 })

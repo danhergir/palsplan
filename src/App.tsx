@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
-import { ArrowRight, CalendarDays, Check, Clipboard, Link2, LoaderCircle, MapPin, Users, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, Clipboard, Link2, LoaderCircle, MapPin, Pencil, Trash2, Users, X } from 'lucide-react'
 import { Calendar } from './components/Calendar'
 import { Logo } from './components/Logo'
+import { NoteBoard } from './components/NoteBoard'
 import { OverlapPanel } from './components/OverlapPanel'
 import { startOfMonth } from './lib/dates'
-import { rememberedMember, rememberMember } from './lib/identity'
+import { creatorToken, forgetTripIdentity, rememberedMember, rememberCreatorToken, rememberMember } from './lib/identity'
 import { dataMode, store } from './lib/store'
 import type { Member, TripSnapshot } from './types'
 
@@ -33,8 +34,9 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  async function openTrip(nextSnapshot: TripSnapshot, nextMember: Member) {
+  async function openTrip(nextSnapshot: TripSnapshot, nextMember: Member, nextCreatorToken?: string) {
     rememberMember(nextSnapshot.trip.id, nextMember.id)
+    if (nextCreatorToken) rememberCreatorToken(nextSnapshot.trip.id, nextCreatorToken)
     setSnapshot(nextSnapshot)
     setMember(nextMember)
     setScreen('trip')
@@ -84,7 +86,17 @@ export default function App() {
 
   useEffect(() => {
     if (!snapshot) return
-    return store.watchTrip(snapshot.trip.code, setSnapshot)
+    return store.watchTrip(snapshot.trip.code, (next) => {
+      if (next) {
+        setSnapshot(next)
+        return
+      }
+      setSnapshot(null)
+      setMember(null)
+      setScreen('home')
+      setUrl()
+      setError('This trip was canceled by its creator.')
+    })
   }, [snapshot?.trip.code])
 
   async function handleJoin(event: FormEvent) {
@@ -133,9 +145,9 @@ export default function App() {
       {showCreate && (
         <CreateDialog
           onClose={() => setShowCreate(false)}
-          onCreated={async (nextSnapshot, nextMember) => {
+          onCreated={async (nextSnapshot, nextMember, nextCreatorToken) => {
             setShowCreate(false)
-            await openTrip(nextSnapshot, nextMember)
+            await openTrip(nextSnapshot, nextMember, nextCreatorToken)
           }}
         />
       )}
@@ -232,7 +244,7 @@ function Home({ joinCode, setJoinCode, onJoin, onCreate, loading, error }: {
 
 function CreateDialog({ onClose, onCreated }: {
   onClose: () => void
-  onCreated: (snapshot: TripSnapshot, member: Member) => void
+  onCreated: (snapshot: TripSnapshot, member: Member, creatorToken: string) => void
 }) {
   const [name, setName] = useState('')
   const [destinations, setDestinations] = useState([''])
@@ -246,7 +258,7 @@ function CreateDialog({ onClose, onCreated }: {
     setError('')
     try {
       const result = await store.createTrip({ name, destinations, memberName })
-      onCreated(result.snapshot, result.member)
+      onCreated(result.snapshot, result.member, result.creatorToken)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not create your trip.')
     } finally {
@@ -309,12 +321,17 @@ function CreateDialog({ onClose, onCreated }: {
   )
 }
 
-function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+function Dialog({ title, onClose, children, eyebrow = 'NEW ADVENTURE' }: {
+  title: string
+  onClose: () => void
+  children: React.ReactNode
+  eyebrow?: string
+}) {
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
       <section className="dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
         <button className="dialog__close icon-button" type="button" onClick={onClose} aria-label="Close"><X size={20} /></button>
-        <div className="eyebrow eyebrow--coral">NEW ADVENTURE</div>
+        <div className="eyebrow eyebrow--coral">{eyebrow}</div>
         <h2 id="dialog-title">{title}</h2>
         {children}
       </section>
@@ -337,6 +354,13 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showRename, setShowRename] = useState(false)
+  const [showCancel, setShowCancel] = useState(false)
+  const [renameName, setRenameName] = useState(snapshot.trip.name)
+  const [confirmName, setConfirmName] = useState('')
+  const [ownerWorking, setOwnerWorking] = useState(false)
+  const [ownerError, setOwnerError] = useState('')
+  const ownerToken = creatorToken(snapshot.trip.id)
 
   const counts = useMemo(() => {
     const map = new Map<string, number>()
@@ -372,6 +396,37 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
     window.setTimeout(() => setCopied(false), 1800)
   }
 
+  async function rename(event: FormEvent) {
+    event.preventDefault()
+    if (!ownerToken || !renameName.trim()) return
+    setOwnerWorking(true)
+    setOwnerError('')
+    try {
+      const next = await store.renameTrip(snapshot.trip.id, renameName, ownerToken)
+      onSnapshot(next)
+      setShowRename(false)
+    } catch (reason) {
+      setOwnerError(reason instanceof Error ? reason.message : 'Could not rename this trip.')
+    } finally {
+      setOwnerWorking(false)
+    }
+  }
+
+  async function cancelTrip(event: FormEvent) {
+    event.preventDefault()
+    if (!ownerToken || confirmName !== snapshot.trip.name) return
+    setOwnerWorking(true)
+    setOwnerError('')
+    try {
+      await store.cancelTrip(snapshot.trip.id, ownerToken)
+      forgetTripIdentity(snapshot.trip.id)
+      onExit()
+    } catch (reason) {
+      setOwnerError(reason instanceof Error ? reason.message : 'Could not cancel this trip.')
+      setOwnerWorking(false)
+    }
+  }
+
   return (
     <div className="trip-page">
       <header className="trip-nav">
@@ -389,7 +444,27 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
       <section className="trip-heading">
         <div>
           <div className="eyebrow eyebrow--coral"><span>AVAILABILITY BOARD</span></div>
-          <h1>{snapshot.trip.name}</h1>
+          <div className="trip-title-row">
+            <h1>{snapshot.trip.name}</h1>
+            {ownerToken && (
+              <div className="owner-controls" aria-label="Creator controls">
+                <button className="icon-button" type="button" onClick={() => {
+                  setRenameName(snapshot.trip.name)
+                  setOwnerError('')
+                  setShowRename(true)
+                }} aria-label="Rename trip">
+                  <Pencil size={16} />
+                </button>
+                <button className="icon-button owner-controls__cancel" type="button" onClick={() => {
+                  setConfirmName('')
+                  setOwnerError('')
+                  setShowCancel(true)
+                }} aria-label="Cancel trip">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            )}
+          </div>
           <div className="trip-meta">
             <div className="destination-list">
               <MapPin size={16} />
@@ -427,6 +502,7 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
               {saving ? <LoaderCircle className="spin" size={18} /> : saved ? <><Check size={18} /> Saved</> : <>Save my dates <ArrowRight size={18} /></>}
             </button>
           </div>
+          <NoteBoard snapshot={snapshot} member={member} onSnapshot={onSnapshot} />
         </div>
         <OverlapPanel snapshot={snapshot} />
       </section>
@@ -435,6 +511,36 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
           <strong>Local demo mode</strong>
           <span>Add Supabase keys to sync this trip across devices.</span>
         </div>
+      )}
+      {showRename && (
+        <Dialog title="Rename this trip" eyebrow="CREATOR CONTROL" onClose={() => setShowRename(false)}>
+          <form onSubmit={rename}>
+            <p className="dialog-copy">Give the plan a new name. Everyone in the trip will see it update.</p>
+            <label className="field">
+              <span>Trip name</span>
+              <input autoFocus value={renameName} onChange={(event) => setRenameName(event.target.value)} maxLength={60} />
+            </label>
+            {ownerError && <p className="form-error">{ownerError}</p>}
+            <button className="button button--primary button--wide" disabled={!renameName.trim() || renameName.trim() === snapshot.trip.name || ownerWorking}>
+              {ownerWorking ? <LoaderCircle className="spin" size={18} /> : <><Pencil size={17} /> Save new name</>}
+            </button>
+          </form>
+        </Dialog>
+      )}
+      {showCancel && (
+        <Dialog title="Cancel this trip?" eyebrow="DANGER ZONE" onClose={() => setShowCancel(false)}>
+          <form onSubmit={cancelTrip}>
+            <p className="dialog-copy">This permanently removes the trip, everyone’s dates, and every pinned note. Type the trip name to confirm.</p>
+            <label className="field">
+              <span>Type “{snapshot.trip.name}”</span>
+              <input autoFocus value={confirmName} onChange={(event) => setConfirmName(event.target.value)} />
+            </label>
+            {ownerError && <p className="form-error">{ownerError}</p>}
+            <button className="button button--danger button--wide" disabled={confirmName !== snapshot.trip.name || ownerWorking}>
+              {ownerWorking ? <LoaderCircle className="spin" size={18} /> : <><Trash2 size={17} /> Cancel trip permanently</>}
+            </button>
+          </form>
+        </Dialog>
       )}
     </div>
   )
