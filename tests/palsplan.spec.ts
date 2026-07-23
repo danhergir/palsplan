@@ -57,7 +57,7 @@ test('friends can create a trip, choose dates, and join with its code', async ({
   await expect(page.locator('.traveler-option').filter({ hasText: 'Dani' })).toContainText('2 saved dates')
   await page.locator('.traveler-option').filter({ hasText: 'Dani' }).click()
   await expect(page.locator('.save-bar')).toContainText('2 dates selected')
-  await expect(page.getByText('1 traveler')).toBeVisible()
+  await expect(page.locator('.traveler-count')).toContainText('1 traveler')
   await expect(page.getByRole('button', { name: 'Rename trip' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Cancel trip' })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Rooftop stay in Getsemaní' })).toBeVisible()
@@ -70,11 +70,18 @@ test('friends can create a trip, choose dates, and join with its code', async ({
   await expect(page.getByText(/traveler already exists/i)).toBeVisible()
   await page.getByLabel('New traveler name').fill('Maya')
   await page.getByRole('button', { name: /Add me/i }).click()
-  await expect(page.getByText('2 travelers')).toBeVisible()
+  await expect(page.locator('.traveler-count')).toContainText('2 travelers')
   await expect(page.getByText('Maya', { exact: true }).first()).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Rooftop stay in Getsemaní' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Rename trip' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Cancel trip' })).toHaveCount(0)
+
+  const crewList = page.locator('.crew-list')
+  await crewList.locator('.crew-member').filter({ hasText: 'Dani' }).click()
+  await expect(page.locator('.calendar-nav')).toContainText('Viewing Dani’s availability')
+  await expect(page.locator('.date-cell.is-filtered')).toHaveCount(2)
+  await crewList.getByRole('button', { name: /Everyone/i }).click()
+  await expect(page.locator('.calendar-nav')).toContainText('Choose every day that could work')
 })
 
 test('invalid invite code has a useful error', async ({ page }) => {

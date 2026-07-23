@@ -1,5 +1,8 @@
 # Palsplan build
 
+- [x] Filter the calendar by one traveler’s selected dates.
+- [x] Provide a clear “Everyone” reset for group overlap.
+- [x] Keep individual filters usable on mobile.
 - [x] Let returning travelers recover their existing trip identity on a new device.
 - [x] Keep “I’m new here” as an explicit path to create a traveler.
 - [x] Verify saved availability reappears without creating a duplicate member.
@@ -35,3 +38,7 @@ browser sessions. The cancellation removed the production smoke-test data.
 Returning-traveler recovery was verified on desktop and mobile: an unknown
 device can reclaim an existing member with saved dates without increasing the
 traveler count, while duplicate names in the new-traveler path are rejected.
+
+Individual date filtering was verified on desktop and mobile with an active
+traveler label, distinct date highlighting, a clear control, and an Everyone
+reset to the group view.

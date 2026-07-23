@@ -415,6 +415,8 @@ footer .logo__mark { width: 30px; height: 30px; }
 .instruction small { margin-top: 2px; color: var(--ink-soft); }
 .legend { margin-left: auto; display: flex; align-items: center; gap: 7px; color: var(--ink-soft); font-size: 11px; }
 .legend i { width: 24px; height: 3px; border-radius: 4px; background: var(--sage); }
+.legend.is-filtering { padding: 6px 8px; border-radius: 999px; color: var(--ink); background: #d8e7df; font-weight: 600; }
+.legend button { width: 22px; height: 22px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; color: var(--ink); background: rgba(255,255,255,.65); cursor: pointer; }
 .calendar-shell { background: var(--white); border: 1px solid var(--line); box-shadow: 0 10px 30px rgba(34, 48, 40, .05); }
 .calendar-nav { min-height: 61px; padding: 0 19px; display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); }
 .calendar-nav > span { text-align: center; color: var(--ink-soft); font-size: 12px; }
@@ -440,6 +442,7 @@ footer .logo__mark { width: 30px; height: 30px; }
 .date-cell:disabled { color: #c3c9c6; opacity: 1; cursor: default; }
 .date-cell.is-selected { color: white; background: var(--coral); box-shadow: inset 0 0 0 2px var(--white), 0 0 0 1px var(--coral); }
 .date-cell.is-match:not(.is-selected) { background: #d8e7df; color: var(--ink); font-weight: 700; }
+.date-cell.is-filtered { color: white; background: var(--sage); box-shadow: inset 0 0 0 2px var(--white), 0 0 0 1px var(--sage); font-weight: 700; }
 .date-cell i {
   --match: .5;
   position: absolute;
@@ -545,10 +548,13 @@ footer .logo__mark { width: 30px; height: 30px; }
 .empty-match__orbit { width: 69px; height: 69px; margin: 0 auto 20px; display: grid; place-items: center; border: 1px dashed var(--coral); border-radius: 50%; color: var(--coral); }
 .crew-list { padding-top: 22px; border-top: 1px solid var(--line); }
 .crew-list__label { display: block; margin-bottom: 13px; color: var(--ink-soft); font: 500 9px "DM Mono", monospace; letter-spacing: .11em; }
-.crew-member { min-height: 48px; display: flex; align-items: center; gap: 10px; }
+.crew-member { width: 100%; min-height: 48px; padding: 5px 7px; display: flex; align-items: center; gap: 10px; border: 1px solid transparent; border-radius: 3px; color: var(--ink); background: transparent; text-align: left; cursor: pointer; transition: background .16s ease, border-color .16s ease; }
+.crew-member:hover { background: rgba(255,255,255,.44); }
+.crew-member.is-active { border-color: rgba(79,143,123,.38); background: rgba(255,255,255,.72); box-shadow: inset 3px 0 0 var(--sage); }
 .crew-member .avatar { width: 30px; height: 30px; font-size: 11px; }
 .crew-member > span:nth-child(2) { flex: 1; font-size: 13px; font-weight: 600; }
 .crew-member small { color: var(--ink-soft); font-size: 10px; }
+.crew-all-icon { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: var(--sage); background: #d8e7df; }
 .demo-notice { position: fixed; right: 18px; bottom: 18px; z-index: 10; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; color: white; background: var(--ink); box-shadow: 0 8px 24px rgba(23,51,45,.22); font-size: 11px; }
 .demo-notice span { color: #bdd0c8; }
 .spin { animation: spin .8s linear infinite; }
@@ -599,7 +605,9 @@ footer .logo__mark { width: 30px; height: 30px; }
   .current-user { margin-top: 20px; }
   .calendar-column { padding: 23px 13px 45px; }
   .instruction { align-items: flex-start; }
-  .legend { display: none; }
+  .instruction { flex-wrap: wrap; }
+  .legend:not(.is-filtering) { display: none; }
+  .legend.is-filtering { width: fit-content; margin: 7px 0 0 40px; }
   .instruction small { font-size: 11px; }
   .calendar-pair { display: block; }
   .calendar-month { padding: 23px 13px 27px; }

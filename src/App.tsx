@@ -411,13 +411,25 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
   const [confirmName, setConfirmName] = useState('')
   const [ownerWorking, setOwnerWorking] = useState(false)
   const [ownerError, setOwnerError] = useState('')
+  const [filterMemberId, setFilterMemberId] = useState<string | null>(null)
   const ownerToken = creatorToken(snapshot.trip.id)
+  const filteredMember = snapshot.members.find((item) => item.id === filterMemberId) ?? null
+  const filteredAvailability = useMemo(
+    () => filterMemberId
+      ? snapshot.availability.filter((item) => item.memberId === filterMemberId)
+      : snapshot.availability,
+    [snapshot.availability, filterMemberId],
+  )
+  const filteredDates = useMemo(
+    () => new Set(filteredAvailability.map((item) => item.date)),
+    [filteredAvailability],
+  )
 
   const counts = useMemo(() => {
     const map = new Map<string, number>()
-    snapshot.availability.forEach(({ date }) => map.set(date, (map.get(date) ?? 0) + 1))
+    filteredAvailability.forEach(({ date }) => map.set(date, (map.get(date) ?? 0) + 1))
     return map
-  }, [snapshot.availability])
+  }, [filteredAvailability])
 
   function toggle(key: string) {
     setSaved(false)
@@ -475,6 +487,13 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
     } catch (reason) {
       setOwnerError(reason instanceof Error ? reason.message : 'Could not cancel this trip.')
       setOwnerWorking(false)
+    }
+  }
+
+  function filterCalendar(memberId: string | null) {
+    setFilterMemberId(memberId)
+    if (window.matchMedia('(max-width: 940px)').matches) {
+      window.setTimeout(() => document.querySelector('.calendar-shell')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
     }
   }
 
@@ -537,13 +556,18 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
           <div className="instruction">
             <span>1</span>
             <div><strong>When could you go?</strong><small>Tap as many dates as you like. Tap again to remove one.</small></div>
-            <div className="legend"><i /> Group availability</div>
+            <div className={`legend ${filteredMember ? 'is-filtering' : ''}`}>
+              <i /> {filteredMember ? `${filteredMember.name} · ${filteredAvailability.length} date${filteredAvailability.length === 1 ? '' : 's'}` : 'Group availability'}
+              {filteredMember && <button type="button" onClick={() => setFilterMemberId(null)} aria-label="Clear traveler filter"><X size={13} /></button>}
+            </div>
           </div>
           <Calendar
             month={month}
             selected={selected}
+            filteredDates={filteredMember ? filteredDates : undefined}
             counts={counts}
-            memberCount={snapshot.members.length}
+            memberCount={filteredMember ? 1 : snapshot.members.length}
+            contextLabel={filteredMember ? `Viewing ${filteredMember.name}’s availability` : undefined}
             onMonthChange={setMonth}
             onToggle={toggle}
           />
@@ -555,7 +579,7 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
           </div>
           <NoteBoard snapshot={snapshot} member={member} onSnapshot={onSnapshot} />
         </div>
-        <OverlapPanel snapshot={snapshot} />
+        <OverlapPanel snapshot={snapshot} activeMemberId={filterMemberId} onFilterMember={filterCalendar} />
       </section>
       {dataMode === 'demo' && (
         <div className="demo-notice">

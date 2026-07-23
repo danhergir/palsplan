@@ -4,8 +4,10 @@ import { addMonths, formatMonth, isPast, monthDays, toDateKey, WEEKDAYS } from '
 type CalendarProps = {
   month: Date
   selected: Set<string>
+  filteredDates?: Set<string>
   counts: Map<string, number>
   memberCount: number
+  contextLabel?: string
   onMonthChange: (date: Date) => void
   onToggle: (key: string) => void
 }
@@ -13,6 +15,7 @@ type CalendarProps = {
 function Month({
   month,
   selected,
+  filteredDates,
   counts,
   memberCount,
   onToggle,
@@ -28,12 +31,13 @@ function Month({
           if (!date) return <span className="date-cell date-cell--empty" key={`empty-${index}`} />
           const key = toDateKey(date)
           const chosen = selected.has(key)
+          const filtered = filteredDates?.has(key) ?? false
           const count = counts.get(key) ?? 0
           const disabled = isPast(date)
           const strongMatch = memberCount > 1 && count === memberCount
           return (
             <button
-              className={`date-cell ${chosen ? 'is-selected' : ''} ${strongMatch ? 'is-match' : ''}`}
+              className={`date-cell ${chosen ? 'is-selected' : ''} ${strongMatch ? 'is-match' : ''} ${filtered ? 'is-filtered' : ''}`}
               type="button"
               key={key}
               disabled={disabled}
@@ -51,14 +55,14 @@ function Month({
   )
 }
 
-export function Calendar({ month, onMonthChange, ...props }: CalendarProps) {
+export function Calendar({ month, onMonthChange, contextLabel, ...props }: CalendarProps) {
   return (
     <div className="calendar-shell">
       <div className="calendar-nav">
         <button className="icon-button" type="button" onClick={() => onMonthChange(addMonths(month, -1))} aria-label="Previous month">
           <ChevronLeft size={20} />
         </button>
-        <span>Choose every day that could work</span>
+        <span>{contextLabel ?? 'Choose every day that could work'}</span>
         <button className="icon-button" type="button" onClick={() => onMonthChange(addMonths(month, 1))} aria-label="Next month">
           <ChevronRight size={20} />
         </button>

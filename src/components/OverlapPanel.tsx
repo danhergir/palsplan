@@ -2,7 +2,11 @@ import { Check, Sparkles, Users } from 'lucide-react'
 import { formatFriendlyDate } from '../lib/dates'
 import type { TripSnapshot } from '../types'
 
-export function OverlapPanel({ snapshot }: { snapshot: TripSnapshot }) {
+export function OverlapPanel({ snapshot, activeMemberId, onFilterMember }: {
+  snapshot: TripSnapshot
+  activeMemberId: string | null
+  onFilterMember: (memberId: string | null) => void
+}) {
   const totals = new Map<string, string[]>()
   snapshot.availability.forEach(({ date, memberId }) => {
     totals.set(date, [...(totals.get(date) ?? []), memberId])
@@ -44,15 +48,20 @@ export function OverlapPanel({ snapshot }: { snapshot: TripSnapshot }) {
         </div>
       )}
       <div className="crew-list">
-        <span className="crew-list__label">THE CREW · {snapshot.members.length}</span>
+        <span className="crew-list__label">FILTER CALENDAR · {snapshot.members.length} TRAVELER{snapshot.members.length === 1 ? '' : 'S'}</span>
+        <button className={`crew-member crew-member--all ${activeMemberId === null ? 'is-active' : ''}`} type="button" aria-pressed={activeMemberId === null} onClick={() => onFilterMember(null)}>
+          <span className="crew-all-icon"><Users size={15} /></span>
+          <span>Everyone</span>
+          <small>Group overlap</small>
+        </button>
         {snapshot.members.map((member) => {
           const days = snapshot.availability.filter((item) => item.memberId === member.id).length
           return (
-            <div className="crew-member" key={member.id}>
+            <button className={`crew-member ${activeMemberId === member.id ? 'is-active' : ''}`} type="button" aria-pressed={activeMemberId === member.id} onClick={() => onFilterMember(member.id)} key={member.id}>
               <span className="avatar" style={{ background: member.color }}>{member.name.slice(0, 1).toUpperCase()}</span>
               <span>{member.name}</span>
               <small>{days ? `${days} day${days === 1 ? '' : 's'}` : 'Waiting'}</small>
-            </div>
+            </button>
           )
         })}
       </div>
