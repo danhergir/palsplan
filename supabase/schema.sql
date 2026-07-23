@@ -8,7 +8,8 @@ create table if not exists public.trips (
   id uuid primary key default gen_random_uuid(),
   code text not null unique check (char_length(code) = 6),
   name text not null check (char_length(name) between 1 and 60),
-  destination text check (char_length(destination) <= 60),
+  destinations text[] not null default '{}'
+    check (cardinality(destinations) <= 8),
   created_at timestamptz not null default now()
 );
 

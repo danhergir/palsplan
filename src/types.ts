@@ -2,7 +2,7 @@ export type Trip = {
   id: string
   code: string
   name: string
-  destination: string | null
+  destinations: string[]
   createdAt: string
 }
 
@@ -27,7 +27,7 @@ export type TripSnapshot = {
 
 export type CreateTripInput = {
   name: string
-  destination?: string
+  destinations?: string[]
   memberName: string
 }
 

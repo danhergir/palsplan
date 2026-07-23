@@ -7,13 +7,19 @@ export const isSupabaseConfigured = Boolean(url && anonKey)
 const supabase = isSupabaseConfigured ? createClient(url, anonKey) : null
 const COLORS = ['#ef8354', '#e9c46a', '#4f8f7b', '#4e78a0', '#c7788b', '#8067a8']
 
-function mapTrip(row: Record<string, string | null>): Trip {
+function mapTrip(row: {
+  id: string
+  code: string
+  name: string
+  destinations: string[] | null
+  created_at: string
+}): Trip {
   return {
     id: row.id!,
     code: row.code!,
     name: row.name!,
-    destination: row.destination,
-    createdAt: row.created_at!,
+    destinations: row.destinations ?? [],
+    createdAt: row.created_at,
   }
 }
 
@@ -55,7 +61,11 @@ export const supabaseStore: TripStore = {
     if (!supabase) throw new Error('Supabase is not configured.')
     const { data: tripRow, error } = await supabase
       .from('trips')
-      .insert({ code: createCode(), name: input.name.trim(), destination: input.destination?.trim() || null })
+      .insert({
+        code: createCode(),
+        name: input.name.trim(),
+        destinations: (input.destinations ?? []).map((destination) => destination.trim()).filter(Boolean),
+      })
       .select()
       .single()
     if (error) throw error

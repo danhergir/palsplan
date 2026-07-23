@@ -41,7 +41,7 @@ export const localStore: TripStore = {
       id: tripId,
       code: tripCode,
       name: input.name.trim(),
-      destination: input.destination?.trim() || null,
+      destinations: (input.destinations ?? []).map((destination) => destination.trim()).filter(Boolean),
       createdAt: new Date().toISOString(),
     }
     const member = newMember(tripId, input.memberName, 0)

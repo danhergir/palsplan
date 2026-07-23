@@ -235,7 +235,7 @@ function CreateDialog({ onClose, onCreated }: {
   onCreated: (snapshot: TripSnapshot, member: Member) => void
 }) {
   const [name, setName] = useState('')
-  const [destination, setDestination] = useState('')
+  const [destinations, setDestinations] = useState([''])
   const [memberName, setMemberName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -245,7 +245,7 @@ function CreateDialog({ onClose, onCreated }: {
     setLoading(true)
     setError('')
     try {
-      const result = await store.createTrip({ name, destination, memberName })
+      const result = await store.createTrip({ name, destinations, memberName })
       onCreated(result.snapshot, result.member)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not create your trip.')
@@ -262,10 +262,40 @@ function CreateDialog({ onClose, onCreated }: {
           <span>Trip name</span>
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. The great summer escape" maxLength={60} />
         </label>
-        <label className="field">
-          <span>Destination <small>optional</small></span>
-          <input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Somewhere sunny?" maxLength={60} />
-        </label>
+        <fieldset className="destination-fieldset">
+          <legend>Destinations <small>optional</small></legend>
+          <p>Add one stop, a whole route, or leave it open for now.</p>
+          <div className="destination-stack">
+            {destinations.map((destination, index) => (
+              <div className="destination-input" key={index}>
+                <MapPin size={16} aria-hidden="true" />
+                <label className="sr-only" htmlFor={`destination-${index}`}>Destination {index + 1}</label>
+                <input
+                  id={`destination-${index}`}
+                  value={destination}
+                  onChange={(event) => setDestinations((current) => current.map((item, itemIndex) => itemIndex === index ? event.target.value : item))}
+                  placeholder={index ? 'Add the next stop' : 'e.g. Lisbon'}
+                  maxLength={60}
+                />
+                {destinations.length > 1 && (
+                  <button
+                    className="remove-destination"
+                    type="button"
+                    onClick={() => setDestinations((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+                    aria-label={`Remove destination ${index + 1}`}
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {destinations.length < 8 && (
+            <button className="add-destination" type="button" onClick={() => setDestinations((current) => [...current, ''])}>
+              <span>+</span> Add another destination
+            </button>
+          )}
+        </fieldset>
         <label className="field">
           <span>Your name</span>
           <input value={memberName} onChange={(event) => setMemberName(event.target.value)} placeholder="e.g. Dani" maxLength={32} />
@@ -360,7 +390,16 @@ function TripView({ snapshot, member, onSnapshot, onExit }: {
         <div>
           <div className="eyebrow eyebrow--coral"><span>AVAILABILITY BOARD</span></div>
           <h1>{snapshot.trip.name}</h1>
-          <p><MapPin size={16} /> {snapshot.trip.destination || 'Destination to be decided'} <i /> <Users size={16} /> {snapshot.members.length} traveler{snapshot.members.length === 1 ? '' : 's'}</p>
+          <div className="trip-meta">
+            <div className="destination-list">
+              <MapPin size={16} />
+              {snapshot.trip.destinations.length
+                ? snapshot.trip.destinations.map((destination, index) => <span key={`${destination}-${index}`}>{destination}</span>)
+                : <span>Destination to be decided</span>}
+            </div>
+            <i />
+            <span className="traveler-count"><Users size={16} /> {snapshot.members.length} traveler{snapshot.members.length === 1 ? '' : 's'}</span>
+          </div>
         </div>
         <div className="current-user">
           <span className="avatar" style={{ background: member.color }}>{member.name.slice(0, 1).toUpperCase()}</span>

@@ -6,6 +6,7 @@
 - [x] Build multi-date availability selection and group overlap ranking.
 - [x] Add local demo persistence and a Supabase-backed shared data adapter.
 - [x] Add the Supabase schema, realtime setup, and MVP access policies.
+- [x] Support zero, one, or several ordered destinations per trip.
 - [x] Install dependencies and run static checks.
 - [x] Test the full create, select, save, share, and join experience.
 - [x] Build the production bundle and inspect responsive screenshots.

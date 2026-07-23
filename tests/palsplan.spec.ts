@@ -6,12 +6,15 @@ test('friends can create a trip, choose dates, and join with its code', async ({
 
   await page.getByRole('button', { name: /Start a new trip/i }).click()
   await page.getByLabel('Trip name').fill('Caribbean long weekend')
-  await page.getByLabel(/Destination/).fill('Cartagena')
+  await page.getByRole('textbox', { name: 'Destination 1', exact: true }).fill('Cartagena')
+  await page.getByRole('button', { name: /Add another destination/i }).click()
+  await page.getByRole('textbox', { name: 'Destination 2', exact: true }).fill('Minca')
   await page.getByLabel('Your name').fill('Dani')
   await page.getByRole('button', { name: /Create the trip/i }).click()
 
   await expect(page.getByRole('heading', { name: 'Caribbean long weekend' })).toBeVisible()
   await expect(page.getByText('Cartagena')).toBeVisible()
+  await expect(page.getByText('Minca')).toBeVisible()
 
   const availableDates = page.locator('button.date-cell:not([disabled])')
   const dateLabels = await availableDates.evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label')))

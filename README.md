@@ -2,7 +2,7 @@
 
 Find the dates when your favorite people can get away together.
 
-Palsplan is a mobile-friendly group availability planner for trips. Create a trip, share its six-character code or URL, and let every friend mark all the dates they could travel. The strongest overlaps rise to the top automatically.
+Palsplan is a mobile-friendly group availability planner for trips. Create a trip with one destination, several stops, or an open-ended route; share its six-character code or URL; and let every friend mark all the dates they could travel. The strongest overlaps rise to the top automatically.
 
 ## Run locally
 
